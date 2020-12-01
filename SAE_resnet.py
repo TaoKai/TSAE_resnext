@@ -117,11 +117,15 @@ class AutoEncoder(nn.Module):
     def __init__(self):
         super(AutoEncoder, self).__init__()
         self.encoder = SAE_RESNEXT_ENCODER()
-        self.decoder = SAE_DECODER()
+        self.decoderA = SAE_DECODER()
+        self.decoderB = SAE_DECODER()
     
-    def forward(self, x):
+    def forward(self, x, tag='A'):
         x = self.encoder(x)
-        x = self.decoder(x)
+        if tag=='A':
+            x = self.decoderA(x)
+        else:
+            x = self.decoderB(x)
         return x
 
 if __name__ == "__main__":
@@ -131,6 +135,6 @@ if __name__ == "__main__":
     x = (x-mean)/std
     x = x.permute(0, 3, 1, 2)
     encoder = AutoEncoder()
-    o4 = encoder(x)
+    o4 = encoder(x, 'B')
     print(encoder)
-    print(o4.shape)
+    print(o4, o4.shape)
