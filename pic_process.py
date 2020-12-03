@@ -41,6 +41,18 @@ class FaceData(object):
         self.mean_B = self.get_mean_color(self.Blist)
         print('A', self.mean_A, 'B', self.mean_B)
     
+    def getTestBatch(self):
+        lst = self.Blist.copy()
+        random.shuffle(lst)
+        lst = lst[:64]
+        imgs = []
+        for l in lst:
+            img = cv2.imread(l, cv2.IMREAD_COLOR)
+            if img is not None:
+                imgs.append(img)
+        imgs = np.array(imgs, dtype=np.uint8)
+        return imgs
+
     def get_mean_color(self, pics):
         cnt = 0
         mean_color = np.zeros(3, dtype=np.float32)
@@ -105,6 +117,7 @@ class FaceData(object):
 
 if __name__ == "__main__":
     faceData = FaceData('A.txt', 'B.txt', 64)
-    while True:
-        wa, ia, wb, ib = faceData.next()
-        print(faceData.cur_A,faceData.cur_B, wa.shape, wb.shape)
+    mat = faceData.getTestBatch()
+    shp = mat.shape
+    mat = mat.reshape(shp[0]*shp[1], shp[2], shp[3])
+    cv2.imwrite('out.jpg', mat)
