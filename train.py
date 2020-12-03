@@ -1,7 +1,7 @@
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from SAE_resnext import AutoEncoder
+from SAE_clip_resnext import AutoEncoder
 from pic_process import FaceData
 from codecs import open
 
