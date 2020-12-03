@@ -38,6 +38,7 @@ class SAE_RESNEXT_ENCODER(nn.Module):
         # self.fc1 = nn.Linear(24576, 1024*4*3)
         # self.fc2 = nn.Linear(1024*4*3, 1024*4*3)
         self.fc_conv = nn.Conv2d(2048, 1024, 1)
+        self.fc2_conv = nn.Conv2d(1024, 1024, 1)
         self.upscale = _UpScale(1024, 512)   
     
     def forward(self, x):
@@ -51,7 +52,7 @@ class SAE_RESNEXT_ENCODER(nn.Module):
         l4_out = self.L4(l3_out)
         # l4_out = l4_out.flatten(start_dim=1)
         # fc1_out = self.fc1(l4_out)
-        fc2_out = self.fc_conv(l4_out)
+        fc2_out = self.fc2_conv(self.fc_conv(l4_out))
         ups_out = self.upscale(fc2_out)
         return ups_out
 
