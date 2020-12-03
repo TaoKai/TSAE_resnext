@@ -19,7 +19,7 @@ def testGen(pics, model):
     outB = outA.permute(0, 2, 3, 1)*255
     outA = outA.detach().cpu().numpy().astype(np.uint8)
     outB = outB.detach().cpu().numpy().astype(np.uint8)
-    img = np.concatenate([orig, outA, outB], dim=2)
+    img = np.concatenate([orig, outA, outB], axis=2)
     shp = img.shape
     img = img.reshape(shp[0]*shp[1], shp[2], shp[3])
     cv2.imwrite('test_out.jpg', img)
