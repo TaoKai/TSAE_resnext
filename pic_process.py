@@ -14,8 +14,8 @@ def getFileList(path):
     return files
 
 def generateAB():
-    pathA = 'faces/obama'
-    pathB = 'faces/biden'
+    pathA = 'faces/andy'
+    pathB = 'faces/obama'
     Afiles = getFileList(pathA)
     Bfiles = getFileList(pathB)
     A_str = ''
@@ -115,9 +115,19 @@ class FaceData(object):
         lines = open(path, 'r', 'utf-8').read().strip().split('\n')
         return lines
 
+def sharp(image):
+    kernel = np.array(
+        [[-1, 0, -1], 
+        [0, 5, 0], 
+        [-1, 0, -1]],
+        dtype=np.float32
+    )
+    dst = cv2.filter2D(image, -1, kernel=kernel)
+    return dst
+
 if __name__ == "__main__":
-    faceData = FaceData('A.txt', 'B.txt', 64)
-    mat = faceData.getTestBatch()
-    shp = mat.shape
-    mat = mat.reshape(shp[0]*shp[1], shp[2], shp[3])
-    cv2.imwrite('out.jpg', mat)
+    generateAB()
+    # path = 'test_out.jpg'
+    # img = cv2.imread(path, cv2.IMREAD_COLOR)
+    # img = sharp(img)
+    # cv2.imwrite('sharp.jpg', img)

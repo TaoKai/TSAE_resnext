@@ -16,7 +16,7 @@ def testGen(pics, model):
     outA = model(pics, 'A')
     outB = model(pics, 'B')
     outA = outA.permute(0, 2, 3, 1)*255
-    outB = outA.permute(0, 2, 3, 1)*255
+    outB = outB.permute(0, 2, 3, 1)*255
     outA = outA.detach().cpu().numpy().astype(np.uint8)
     outB = outB.detach().cpu().numpy().astype(np.uint8)
     img = np.concatenate([orig, outA, outB], axis=2)

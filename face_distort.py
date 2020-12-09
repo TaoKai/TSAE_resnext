@@ -3,6 +3,25 @@ from skimage import transform as trans
 import numpy as np
 import cv2
 
+random_transform_args = {
+    'rotation_range': 10,
+    'zoom_range': 0.05,
+    'shift_range': 0.05,
+    'random_flip': 0.4,
+}
+def random_transform(image, rotation_range, zoom_range, shift_range, random_flip):
+    h, w = image.shape[0:2]
+    rotation = np.random.uniform(-rotation_range, rotation_range)
+    scale = np.random.uniform(1 - zoom_range, 1 + zoom_range)
+    tx = np.random.uniform(-shift_range, shift_range) * w
+    ty = np.random.uniform(-shift_range, shift_range) * h
+    mat = cv2.getRotationMatrix2D((w // 2, h // 2), rotation, scale)
+    mat[:, 2] += (tx, ty)
+    result = cv2.warpAffine(image, mat, (w, h), borderMode=cv2.BORDER_REPLICATE)
+    if np.random.random() < random_flip:
+        result = result[:, ::-1]
+    return result
+
 def random_warp(image):
     assert image.shape==(112,96,3)
     num = 9
@@ -90,22 +109,25 @@ def faceAlign(img, points):
         return warped
 
 def random_facepair(img):
-    warp = None
-    if random.random()>0.5:
-        warp, img = random_warp(img)
-    else:
-        warp = img.copy()
-    if random.random()>0.5:
-        warp = cv2.flip(warp, 1)
-        img = cv2.flip(img, 1)
+    img = random_transform(img, **random_transform_args)
+    warp, img = random_warp(img)
+    # warp = None
+    # if random.random()>0.5:
+    #     warp, img = random_warp(img)
+    # else:
+    #     warp = img.copy()
+    # if random.random()>0.5:
+    #     warp = cv2.flip(warp, 1)
+    #     img = cv2.flip(img, 1)
     return warp, img
     
 
 if __name__=='__main__':
-    path = 'obm.jpg'
+    path = 'faces/trevor/trevor_5.jpg'
     img = cv2.imread(path, cv2.IMREAD_COLOR)
-    while True:
-        warp, img = random_facepair(img)
-        out = np.concatenate([warp, img], axis=1)
-        cv2.imshow('out', out)
-        cv2.waitKey(500)
+    img = random_transform(img, **random_transform_args)
+    # while True:
+    #     warp, img = random_facepair(img)
+    #     out = np.concatenate([warp, img], axis=1)
+    cv2.imshow('out', img)
+    cv2.waitKey(0)
