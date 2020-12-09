@@ -108,6 +108,15 @@ def faceAlign(img, points):
         warped = cv2.warpAffine(img, M, (shp[1],shp[0]), borderValue = 0.0)
         return warped
 
+def random_facepair_crop(img, x, y):
+    warp, img = random_warp(img)
+    warp = warp[y:y+64, x:x+64, :]
+    img = img[y:y+64, x:x+64, :]
+    if random.random()>0.7:
+        warp = cv2.flip(warp, 1)
+        img = cv2.flip(img, 1)
+    return warp, img
+
 def random_facepair(img):
     img = random_transform(img, **random_transform_args)
     warp, img = random_warp(img)

@@ -4,14 +4,56 @@ from codecs import open
 import numpy as np
 import torch
 import random
-from face_distort import random_facepair
+from face_distort import random_facepair, random_facepair_crop
+from mtcnn import DetectFace
 
+detect = DetectFace()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def getFileList(path):
     files = os.listdir(path)
     files = [path+'/'+fp for fp in files]
     return files
+
+def generateABCoord():
+    pathA = 'faces/andy'
+    pathB = 'faces/obama'
+    Afiles = getFileList(pathA)
+    Bfiles = getFileList(pathB)
+    A_str = ''
+    B_str = ''
+    for a in Afiles:
+        img = cv2.imread(a, cv2.IMREAD_COLOR)
+        if img is None:
+            continue
+        _, data = detect(img)
+        if data[1].shape[0]==0:
+            continue
+        points = data[1][0]
+        points = points.min(axis=0)-np.array([13, 14], dtype=np.float32)
+        lt = points.clip(0, 96).astype(np.int32)
+        A_str += a+' '+str(lt[0])+' '+str(lt[1])+'\n'
+        print(a, lt)
+        cut = img[lt[1]:lt[1]+64, lt[0]:lt[0]+64, :]
+        cv2.imshow('cut', cut)
+        cv2.waitKey(1)
+    for b in Bfiles:
+        img = cv2.imread(b, cv2.IMREAD_COLOR)
+        if img is None:
+            continue
+        _, data = detect(img)
+        if data[1].shape[0]==0:
+            continue
+        points = data[1][0]
+        points = points.min(axis=0)-np.array([13, 14], dtype=np.float32)
+        lt = points.clip(0, 96).astype(np.int32)
+        B_str += b+' '+str(lt[0])+' '+str(lt[1])+'\n'
+        print(b, lt)
+        cut = img[lt[1]:lt[1]+64, lt[0]:lt[0]+64, :]
+        cv2.imshow('cut', cut)
+        cv2.waitKey(1)
+    open('A_c.txt', 'w', 'utf-8').write(A_str.strip())
+    open('B_c.txt', 'w', 'utf-8').write(B_str.strip())
 
 def generateAB():
     pathA = 'faces/andy'
@@ -47,7 +89,12 @@ class FaceData(object):
         lst = lst[:64]
         imgs = []
         for l in lst:
-            img = cv2.imread(l, cv2.IMREAD_COLOR)
+            ls = l.split(' ')[0]
+            p = ls[0]
+            x = int(ls[1])
+            y = int(ls[2])
+            img = cv2.imread(p, cv2.IMREAD_COLOR)
+            img = img[y:y+64, x:x+64, :]
             if img is not None:
                 imgs.append(img)
         imgs = np.array(imgs, dtype=np.uint8)
@@ -56,10 +103,15 @@ class FaceData(object):
     def get_mean_color(self, pics):
         cnt = 0
         mean_color = np.zeros(3, dtype=np.float32)
-        for p in pics:
+        for pp in pics:
+            ls = pp.split(' ')
+            p = ls[0]
+            x = int(ls[1])
+            y = int(ls[2])
             img = cv2.imread(p, cv2.IMREAD_COLOR)
             if img is None:
                 continue
+            img = img[y:y+64, x:x+64, :]
             img = img/255.0
             mean_color += img.mean(axis=(0, 1))
             cnt += 1
@@ -69,10 +121,14 @@ class FaceData(object):
         imgs = []
         warps = []
         for fp in batch:
-            img = cv2.imread(fp, cv2.IMREAD_COLOR)
+            ls = fp.split(' ')
+            p = ls[0]
+            x = int(ls[1])
+            y = int(ls[2])
+            img = cv2.imread(p, cv2.IMREAD_COLOR)
             if img is None:
                 continue
-            warp, img = random_facepair(img)
+            warp, img = random_facepair_crop(img, x, y)
             imgs.append(img)
             warps.append(warp)
         imgs = np.array(imgs, dtype=np.float32)/255
@@ -105,6 +161,8 @@ class FaceData(object):
         warpsB, imgsB = self.getTrainBatch(batchB)
         warpsA += self.mean_B-self.mean_A
         imgsA += self.mean_B-self.mean_A
+        warpsA = warpsA.clip(0, 1)
+        imgsA = imgsA.clip(0, 1)
         warpsA = self.to_tensor(warpsA)
         imgsA = self.to_tensor(imgsA)
         warpsB = self.to_tensor(warpsB)
@@ -126,8 +184,24 @@ def sharp(image):
     return dst
 
 if __name__ == "__main__":
-    generateAB()
+    # generateABCoord()
     # path = 'test_out.jpg'
     # img = cv2.imread(path, cv2.IMREAD_COLOR)
     # img = sharp(img)
     # cv2.imwrite('sharp.jpg', img)
+    face = FaceData('A_c.txt', 'B_c.txt', 6)
+    while True:
+        warpsA, imgsA, warpsB, imgsB = face.next()
+        print(face.cur_A, face.cur_B, warpsA.shape, imgsA.shape, warpsB.shape, imgsB.shape)
+        wa = warpsA.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 64, 3)*255
+        wa = wa.astype(np.uint8)
+        ia = imgsA.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 64, 3)*255
+        ia = ia.astype(np.uint8)
+        wb = warpsB.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 64, 3)*255
+        wb = wb.astype(np.uint8)
+        ib = imgsB.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 64, 3)*255
+        ib = ib.astype(np.uint8)
+        out = np.concatenate([wa, ia, wb, ib], axis=1)
+        cv2.imshow('out', out)
+        cv2.waitKey(10)
+        
