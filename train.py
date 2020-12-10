@@ -28,7 +28,7 @@ def testGen(pics, model):
 def train(epoch, batch_size):
     model_path = 'faceTSAE_model.pth'
     model = AutoEncoder()
-    faceData = FaceData('A.txt', 'B.txt', batch_size)
+    faceData = FaceData('A_c.txt', 'B_c.txt', batch_size)
     criterion = nn.L1Loss().to(device)
     model.to(device)
     optimizer_1 = optim.Adam([{'params': model.encoder.parameters()},

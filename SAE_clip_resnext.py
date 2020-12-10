@@ -135,7 +135,7 @@ class AutoEncoder(nn.Module):
 if __name__ == "__main__":
     mean = torch.tensor([0.485, 0.456, 0.406])
     std = torch.tensor([0.229, 0.224, 0.225])
-    x = torch.randint(0, 256, (5, 112, 96, 3)).float()/255
+    x = torch.randint(0, 256, (5, 64, 64, 3)).float()/255
     x = (x-mean)/std
     x = x.permute(0, 3, 1, 2)
     encoder = AutoEncoder()
