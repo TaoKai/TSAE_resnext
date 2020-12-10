@@ -89,7 +89,7 @@ class FaceData(object):
         lst = lst[:64]
         imgs = []
         for l in lst:
-            ls = l.split(' ')[0]
+            ls = l.split(' ')
             p = ls[0]
             x = int(ls[1])
             y = int(ls[2])
