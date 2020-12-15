@@ -23,19 +23,23 @@ def random_transform(image, rotation_range, zoom_range, shift_range, random_flip
     return result
 
 def random_warp(image):
-    assert image.shape==(112,96,3)
-    num = 9
-    rangeX = np.linspace(4, 92, num)
+    shp = image.shape
+    if shp != (256,256,3):
+        image = cv2.resize(image, (256, 256))
+    num = 18
+    rangeX = np.linspace(8, 256-8, num)
     mapx = np.broadcast_to(rangeX, (num, num))
-    rangeY = np.linspace(4, 108, num)
+    rangeY = np.linspace(8, 256-8, num)
     mapy = np.broadcast_to(rangeY, (num, num)).T
     mapx = mapx + np.random.normal(size=(num, num), scale=2)
     mapy = mapy + np.random.normal(size=(num, num), scale=2)
-    interp_mapx = cv2.resize(mapx, (88, 104)).astype('float32')
-    interp_mapy = cv2.resize(mapy, (88, 104)).astype('float32')
+    interp_mapx = cv2.resize(mapx, (240, 240)).astype('float32')
+    interp_mapy = cv2.resize(mapy, (240, 240)).astype('float32')
     warped_image = cv2.remap(image, interp_mapx, interp_mapy, cv2.INTER_LINEAR)
     warped = image.copy()
-    warped[4:108, 4:92, :] = warped_image
+    warped[8:256-8, 8:256-8, :] = warped_image
+    warped = cv2.resize(warped, (shp[1], shp[0]))
+    image = cv2.resize(image, (shp[1], shp[0]))
     return warped, image
 
 def random_warp_legacy(image):
@@ -108,6 +112,15 @@ def faceAlign(img, points):
         warped = cv2.warpAffine(img, M, (shp[1],shp[0]), borderValue = 0.0)
         return warped
 
+def random_facepair_68(img, M):
+    warp, img = random_warp(img)
+    warp = cv2.warpAffine(warp, M, (64, 64), borderValue=0.0)
+    img = cv2.warpAffine(img, M, (64, 64), borderValue=0.0)
+    if random.random()>0.7:
+        warp = cv2.flip(warp, 1)
+        img = cv2.flip(img, 1)
+    return warp, img
+
 def random_facepair_crop(img, x, y):
     warp, img = random_warp(img)
     warp = warp[y:y+64, x:x+64, :]
@@ -132,11 +145,11 @@ def random_facepair(img):
     
 
 if __name__=='__main__':
-    path = 'faces/trevor/trevor_5.jpg'
+    path = 'faces/andy_flip/andy_157.jpg'
     img = cv2.imread(path, cv2.IMREAD_COLOR)
-    img = random_transform(img, **random_transform_args)
+    warp, img = random_warp(img)
     # while True:
     #     warp, img = random_facepair(img)
     #     out = np.concatenate([warp, img], axis=1)
-    cv2.imshow('out', img)
+    cv2.imshow('out', warp)
     cv2.waitKey(0)

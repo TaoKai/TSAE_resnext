@@ -4,16 +4,105 @@ from codecs import open
 import numpy as np
 import torch
 import random
-from face_distort import random_facepair, random_facepair_crop
+from face_distort import random_facepair, random_facepair_68
 from mtcnn import DetectFace
+from dlib_util import test_68points, get_det_pred, show_68points
+from skimage import transform as trans
 
 detect = DetectFace()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+det68, pred68 = get_det_pred()
+
+landmarks_2D = np.array([
+[ 0.000213256,  0.106454  ], #17
+[ 0.0752622,    0.038915  ], #18
+[ 0.18113,      0.0187482 ], #19
+[ 0.29077,      0.0344891 ], #20
+[ 0.393397,     0.0773906 ], #21
+[ 0.586856,     0.0773906 ], #22
+[ 0.689483,     0.0344891 ], #23
+[ 0.799124,     0.0187482 ], #24
+[ 0.904991,     0.038915  ], #25
+[ 0.98004,      0.106454  ], #26
+[ 0.490127,     0.203352  ], #27
+[ 0.490127,     0.307009  ], #28
+[ 0.490127,     0.409805  ], #29
+[ 0.490127,     0.515625  ], #30
+[ 0.36688,      0.587326  ], #31
+[ 0.426036,     0.609345  ], #32
+[ 0.490127,     0.628106  ], #33
+[ 0.554217,     0.609345  ], #34
+[ 0.613373,     0.587326  ], #35
+[ 0.121737,     0.216423  ], #36
+[ 0.187122,     0.178758  ], #37
+[ 0.265825,     0.179852  ], #38
+[ 0.334606,     0.231733  ], #39
+[ 0.260918,     0.245099  ], #40
+[ 0.182743,     0.244077  ], #41
+[ 0.645647,     0.231733  ], #42
+[ 0.714428,     0.179852  ], #43
+[ 0.793132,     0.178758  ], #44
+[ 0.858516,     0.216423  ], #45
+[ 0.79751,      0.244077  ], #46
+[ 0.719335,     0.245099  ], #47
+[ 0.254149,     0.780233  ], #48
+[ 0.726104,     0.780233  ], #54
+], dtype=np.float32)
 
 def getFileList(path):
     files = os.listdir(path)
     files = [path+'/'+fp for fp in files]
     return files
+
+def innerGen68(path):
+    img = cv2.imread(path, cv2.IMREAD_COLOR)
+    if img is None:
+        return None
+    dic = test_68points(img, det68, pred68)
+    if dic is None:
+        return None
+    points = []
+    for _, v in dic.items():
+        points += v
+    points = points[17:49]+points[54:55]
+    points = np.array(points, dtype=np.float32)
+    src = landmarks_2D*np.array([64, 64])
+    tform = trans.SimilarityTransform()
+    tform.estimate(points, src)
+    M = tform.params[0:3,:]
+    if M is None:
+        return None
+    else:
+        # warped = cv2.warpAffine(img, M[:2], (64,64), borderValue = 0.0)
+        # cv2.imshow('img', warped)
+        # cv2.waitKey(1)
+        ml = list(M[:2].reshape(-1))
+        str_ml = ''
+        for m in ml:
+            str_ml += str(m)+' '
+        return str_ml.strip()
+
+def generateAB68():
+    pathA = 'faces/andy_flip'
+    pathB = 'faces/liming'
+    Afiles = getFileList(pathA)
+    Bfiles = getFileList(pathB)
+    A_str = ''
+    B_str = ''
+    for a in Afiles:
+        m_str = innerGen68(a)
+        if m_str is not None:
+            A_str += a+' '+m_str+'\n'
+            print(a, m_str)
+    for b in Bfiles:
+        m_str = innerGen68(b)
+        if m_str is not None:
+            B_str += b+' '+m_str+'\n'
+            print(b, m_str)
+    open('A_68.txt', 'w', 'utf-8').write(A_str.strip())
+    open('B_68.txt', 'w', 'utf-8').write(B_str.strip())
+
+
 
 def generateABCoord():
     pathA = 'faces/andy'
@@ -83,6 +172,14 @@ class FaceData(object):
         self.mean_B = self.get_mean_color(self.Blist)
         print('A', self.mean_A, 'B', self.mean_B)
     
+    def getAffineMat(self, strs):
+        mat = []
+        strs = strs[1:]
+        for s in strs:
+            mat.append(float(s))
+        mat = np.array(mat, dtype=np.float32).reshape(2, 3)
+        return mat
+
     def getTestBatch(self):
         lst = self.Blist.copy()
         random.shuffle(lst)
@@ -91,11 +188,10 @@ class FaceData(object):
         for l in lst:
             ls = l.split(' ')
             p = ls[0]
-            x = int(ls[1])
-            y = int(ls[2])
+            M = self.getAffineMat(ls)
             img = cv2.imread(p, cv2.IMREAD_COLOR)
-            img = img[y:y+64, x:x+64, :]
             if img is not None:
+                img = cv2.warpAffine(img, M, (64, 64), borderValue=0.0)
                 imgs.append(img)
         imgs = np.array(imgs, dtype=np.uint8)
         return imgs
@@ -106,12 +202,11 @@ class FaceData(object):
         for pp in pics:
             ls = pp.split(' ')
             p = ls[0]
-            x = int(ls[1])
-            y = int(ls[2])
+            M = self.getAffineMat(ls)
             img = cv2.imread(p, cv2.IMREAD_COLOR)
             if img is None:
                 continue
-            img = img[y:y+64, x:x+64, :]
+            img = cv2.warpAffine(img, M, (64, 64), borderValue=0.0)
             img = img/255.0
             mean_color += img.mean(axis=(0, 1))
             cnt += 1
@@ -123,12 +218,11 @@ class FaceData(object):
         for fp in batch:
             ls = fp.split(' ')
             p = ls[0]
-            x = int(ls[1])
-            y = int(ls[2])
+            M = self.getAffineMat(ls)
             img = cv2.imread(p, cv2.IMREAD_COLOR)
             if img is None:
                 continue
-            warp, img = random_facepair_crop(img, x, y)
+            warp, img = random_facepair_68(img, M)
             imgs.append(img)
             warps.append(warp)
         imgs = np.array(imgs, dtype=np.float32)/255
@@ -184,12 +278,12 @@ def sharp(image):
     return dst
 
 if __name__ == "__main__":
-    # generateABCoord()
+    # generateAB68()
     # path = 'test_out.jpg'
     # img = cv2.imread(path, cv2.IMREAD_COLOR)
     # img = sharp(img)
     # cv2.imwrite('sharp.jpg', img)
-    face = FaceData('A_c.txt', 'B_c.txt', 6)
+    face = FaceData('A_68.txt', 'B_68.txt', 6)
     while True:
         warpsA, imgsA, warpsB, imgsB = face.next()
         print(face.cur_A, face.cur_B, warpsA.shape, imgsA.shape, warpsB.shape, imgsB.shape)
@@ -203,5 +297,4 @@ if __name__ == "__main__":
         ib = ib.astype(np.uint8)
         out = np.concatenate([wa, ia, wb, ib], axis=1)
         cv2.imshow('out', out)
-        cv2.waitKey(10)
-        
+        cv2.waitKey(100)
