@@ -66,7 +66,7 @@ def innerGen68(path):
         points += v
     points = points[17:49]+points[54:55]
     points = np.array(points, dtype=np.float32)
-    src = landmarks_2D*np.array([64, 64])
+    src = landmarks_2D*np.array([128, 128])+np.array([16, 16])
     tform = trans.SimilarityTransform()
     tform.estimate(points, src)
     M = tform.params[0:3,:]
@@ -83,8 +83,8 @@ def innerGen68(path):
         return str_ml.strip()
 
 def generateAB68():
-    pathA = 'faces/andy_flip'
-    pathB = 'faces/liming'
+    pathA = 'faces/yueyunpeng'
+    pathB = 'faces/dilireba_adv'
     Afiles = getFileList(pathA)
     Bfiles = getFileList(pathB)
     A_str = ''
@@ -191,7 +191,7 @@ class FaceData(object):
             M = self.getAffineMat(ls)
             img = cv2.imread(p, cv2.IMREAD_COLOR)
             if img is not None:
-                img = cv2.warpAffine(img, M, (64, 64), borderValue=0.0)
+                img = cv2.warpAffine(img, M, (144, 144), borderValue=0.0)
                 imgs.append(img)
         imgs = np.array(imgs, dtype=np.uint8)
         return imgs
@@ -206,7 +206,7 @@ class FaceData(object):
             img = cv2.imread(p, cv2.IMREAD_COLOR)
             if img is None:
                 continue
-            img = cv2.warpAffine(img, M, (64, 64), borderValue=0.0)
+            img = cv2.warpAffine(img, M, (144, 144), borderValue=0.0)
             img = img/255.0
             mean_color += img.mean(axis=(0, 1))
             cnt += 1
@@ -278,22 +278,18 @@ def sharp(image):
     return dst
 
 if __name__ == "__main__":
-    # generateAB68()
-    # path = 'test_out.jpg'
-    # img = cv2.imread(path, cv2.IMREAD_COLOR)
-    # img = sharp(img)
-    # cv2.imwrite('sharp.jpg', img)
+    generateAB68()
     face = FaceData('A_68.txt', 'B_68.txt', 6)
     while True:
         warpsA, imgsA, warpsB, imgsB = face.next()
         print(face.cur_A, face.cur_B, warpsA.shape, imgsA.shape, warpsB.shape, imgsB.shape)
-        wa = warpsA.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 64, 3)*255
+        wa = warpsA.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 144, 3)*255
         wa = wa.astype(np.uint8)
-        ia = imgsA.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 64, 3)*255
+        ia = imgsA.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 144, 3)*255
         ia = ia.astype(np.uint8)
-        wb = warpsB.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 64, 3)*255
+        wb = warpsB.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 144, 3)*255
         wb = wb.astype(np.uint8)
-        ib = imgsB.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 64, 3)*255
+        ib = imgsB.detach().numpy().transpose(0, 2, 3, 1).reshape(-1, 144, 3)*255
         ib = ib.astype(np.uint8)
         out = np.concatenate([wa, ia, wb, ib], axis=1)
         cv2.imshow('out', out)
